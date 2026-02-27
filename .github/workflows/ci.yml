@@ -27,7 +27,7 @@ jobs:
       - name: Create Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "deb/socksd_${{ github.ref_name }}.deb,socksd.exe"
+          artifacts: "socksd,deb/socksd_${{ github.ref_name }}.deb,socksd.exe"
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref_name }}
           generateReleaseNotes: true
