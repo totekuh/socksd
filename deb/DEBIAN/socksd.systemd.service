@@ -5,9 +5,8 @@ After=network.target
 [Service]
 User=nobody
 Type=simple
-RemainAfterExit=yes
 ExecStart=/usr/bin/socksd -i 0.0.0.0 -p 1337
-ExecStop=killall socksd
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target

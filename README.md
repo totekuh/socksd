@@ -23,14 +23,49 @@ systemctl start socksd
 
 After starting socksd as a service, the proxy becomes available at 0.0.0.0:1337.
 
-## Cross-compile for Windows x64
+## Build Targets
+
+### Static Linux x86_64 (musl)
+
+```bash
+sudo apt install musl-tools
+make static
+```
+
+Produces a fully static `socksd-linux-amd64`.
+
+### Static Linux ARM64
+
+```bash
+sudo apt install gcc-aarch64-linux-gnu
+make arm64
+```
+
+Produces a fully static `socksd-linux-arm64`.
+
+### Static Linux ARM
+
+```bash
+sudo apt install gcc-arm-linux-gnueabihf
+make arm
+```
+
+Produces a fully static `socksd-linux-arm`.
+
+### Windows x64
 
 ```bash
 sudo apt install gcc-mingw-w64-x86-64
 make windows
 ```
 
-Produces a static `socksd.exe` (~82KB) with no DLL dependencies.
+Produces a static `socksd-windows-amd64.exe` with no DLL dependencies.
+
+### All cross targets at once
+
+```bash
+make all-targets
+```
 
 ## Usage
 
@@ -44,4 +79,10 @@ With authentication:
 
 ```bash
 socksd -i 0.0.0.0 -p 1080 -u user -P pass
+```
+
+Quiet mode (suppress all log output):
+
+```bash
+socksd -q -p 1080
 ```

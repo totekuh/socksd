@@ -53,6 +53,7 @@ static sblist* auth_ips;
 static pthread_mutex_t auth_ips_mutex = PTHREAD_MUTEX_INITIALIZER;
 static const struct server* server;
 static int bind_mode;
+static int quiet_mode;
 
 enum socksstate {
 	SS_1_CONNECTED,
@@ -93,7 +94,7 @@ struct thread {
 /* we log to stderr because it's not using line buffering, i.e. malloc which would need
    locking when called from different threads. for the same reason we use dprintf,
    which writes directly to an fd. */
-#define dolog(...) dprintf(2, __VA_ARGS__)
+#define dolog(...) do { if(!quiet_mode) dprintf(2, __VA_ARGS__); } while(0)
 #else
 static void dolog(const char* fmt, ...) { }
 #endif
@@ -372,11 +373,12 @@ static void collect(sblist *threads) {
 
 static int usage(void) {
 	dprintf(2,
-		"MicroSocks SOCKS5 Server\n"
-		"------------------------\n"
-		"usage: microsocks -1 -b -i listenip -p port -u user -P password\n"
+		"socksd SOCKS5 Server\n"
+		"--------------------\n"
+		"usage: socksd -1 -q -b -i listenip -p port -u user -P password\n"
 		"all arguments are optional.\n"
 		"by default listenip is 0.0.0.0 and port 1080.\n\n"
+		"option -q activates quiet mode: suppress all log output\n"
 		"option -b forces outgoing connections to be bound to the ip specified with -i\n"
 		"option -1 activates auth_once mode: once a specific ip address\n"
 		"authed successfully with user/pass, it is added to a whitelist\n"
@@ -401,13 +403,16 @@ int main(int argc, char** argv) {
 
 	platform_init();
 
-	while((c = getopt(argc, argv, ":1bi:p:u:P:")) != -1) {
+	while((c = getopt(argc, argv, ":1bqi:p:u:P:")) != -1) {
 		switch(c) {
 			case '1':
 				auth_ips = sblist_new(sizeof(union sockaddr_union), 8);
 				break;
 			case 'b':
 				bind_mode = 1;
+				break;
+			case 'q':
+				quiet_mode = 1;
 				break;
 			case 'u':
 				auth_user = strdup(optarg);

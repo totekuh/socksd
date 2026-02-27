@@ -22,6 +22,7 @@ rm -rf "$deb_package_path"
 mkdir -p "$deb_package_path/DEBIAN"
 cp "./deb/DEBIAN/control" "$deb_package_path/DEBIAN/control"
 echo "Version: $(echo "$version"|sed 's/v//g')" >> "$deb_package_path/DEBIAN/control"
+echo "Architecture: $(dpkg --print-architecture)" >> "$deb_package_path/DEBIAN/control"
 
 cp "./deb/DEBIAN/preinst" "$deb_package_path/DEBIAN/preinst"
 

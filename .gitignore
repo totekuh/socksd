@@ -1,8 +1,15 @@
 *.o
 *.out
 *.win.o
+*.static.o
+*.arm64.o
+*.arm.o
 socksd
 socksd.exe
+socksd-linux-amd64
+socksd-linux-arm64
+socksd-linux-arm
+socksd-windows-amd64.exe
 .idea/
 deb/socksd_*/
 deb/*.deb

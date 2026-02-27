@@ -8,13 +8,12 @@ function install_systemd_service() {
 [Unit]
 Description=socksd service
 After=network.target
-                                                                                                                                                                                              
+
 [Service]
 User=nobody
 Type=simple
-RemainAfterExit=yes                                                                                                                                                                            
 ExecStart=/usr/bin/socksd -i 0.0.0.0 -p 1337
-ExecStop=killall socksd
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
@@ -30,17 +29,17 @@ if [ -e /run/systemd/system ] ; then
     exit 0
 fi
 
-socksd() {
+do_socksd() {
     case "$1" in
         start)
-            socksd -i 0.0.0.0 -p 1337
+            /usr/bin/socksd -i 0.0.0.0 -p 1337
             ;;
 	stop)
-	    pkill socksd
+	    pkill -x socksd
 	    ;;
         restart|reload|force-reload)
-	    pkill socksd
-	    socksd
+	    pkill -x socksd
+	    /usr/bin/socksd -i 0.0.0.0 -p 1337
             ;;
         *)
             return 1
@@ -48,7 +47,7 @@ socksd() {
     esac
 }
 
-socksd "$@"' > /etc/init.d/socksd
+do_socksd "$@"' > /etc/init.d/socksd
     chmod +x /etc/init.d/socksd
     exit 0
 }
@@ -56,4 +55,3 @@ socksd "$@"' > /etc/init.d/socksd
 pidof /sbin/init && install_systemd_service || install_initd_service
 
 exit 0
-

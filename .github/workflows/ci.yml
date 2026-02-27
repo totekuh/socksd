@@ -13,21 +13,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build Linux
-        run: make
+      - name: Install cross-compilation toolchains
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf gcc-mingw-w64-x86-64
+
+      - name: Build static Linux x86_64
+        run: make static
+
+      - name: Build static Linux ARM64
+        run: make arm64
+
+      - name: Build static Linux ARM
+        run: make arm
+
+      - name: Build Windows x64
+        run: make windows
 
       - name: Build Debian package
         run: bash build-deb.sh ${{ github.ref_name }}
 
-      - name: Cross-compile Windows x64
-        run: |
-          sudo apt-get update && sudo apt-get install -y gcc-mingw-w64-x86-64
-          make windows
-
       - name: Create Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "socksd,deb/socksd_${{ github.ref_name }}.deb,socksd.exe"
+          artifacts: "socksd-linux-amd64,socksd-linux-arm64,socksd-linux-arm,socksd-windows-amd64.exe,deb/socksd_${{ github.ref_name }}.deb"
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref_name }}
           generateReleaseNotes: true

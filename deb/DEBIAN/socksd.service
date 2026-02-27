@@ -4,15 +4,18 @@ if [ -e /run/systemd/system ] ; then
     exit 0
 fi
 
-socksd()
+do_socksd()
 {
     case "$1" in
         start)
-            socksd
+            /usr/bin/socksd -i 0.0.0.0 -p 1337
             ;;
-        stop|restart|reload|force-reload)
-	    pkill socksd
-	    socksd
+        stop)
+            pkill -x socksd
+            ;;
+        restart|reload|force-reload)
+            pkill -x socksd
+            /usr/bin/socksd -i 0.0.0.0 -p 1337
             ;;
         *)
             return 1
@@ -20,5 +23,4 @@ socksd()
     esac
 }
 
-socksd "$@"
-
+do_socksd "$@"
