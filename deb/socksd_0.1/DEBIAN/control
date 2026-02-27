@@ -1,6 +1,0 @@
-Package: socksd
-Maintainer: totekuh
-Architecture: all
-Description: A SOCKS server running as a daemon
-Homepage: https://github.com/cyberhexe/socksd
-Version: 0.1

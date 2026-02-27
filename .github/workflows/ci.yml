@@ -1,44 +1,33 @@
-name: Autoincrement the Git tag and publish a Debian package
+name: Build and Release
 
 on:
   push:
-    branches: [ 'master' ]
+    tags: [ 'v*' ]
 
-env:
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-
-### 1 - auto update the Git tag
-### 2 - build the Debian package
-### 3 - release the package
-### https://github.com/marketplace/actions/create-release
+permissions:
+  contents: write
 
 jobs:
-  upload-artifact:
+  release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-ecosystem/action-get-latest-tag@v1
-        id: get-latest-tag
-      - uses: actions-ecosystem/action-bump-semver@v1
-        id: bump-semver
-        with:
-          current_version: ${{ steps.get-latest-tag.outputs.tag }}
-          level: minor
-      - uses: actions-ecosystem/action-push-tag@v1
-        with:
-          tag: ${{ steps.bump-semver.outputs.new_version }}
-          message: '${{ steps.bump-semver.outputs.new_version }}: PR #${{ github.event.pull_request.number }} ${{ github.event.pull_request.title }}'
+      - uses: actions/checkout@v4
 
-      - uses: actions/checkout@v2
-      - run: sh build-deb.sh ${{ steps.bump-semver.outputs.new_version }}
-      - uses: actions/upload-artifact@v3
-        with:
-          name: socksd
-          path: deb/socksd_${{ steps.bump-semver.outputs.new_version }}.deb
+      - name: Build Linux
+        run: make
 
-      - uses: ncipollo/release-action@v1
+      - name: Build Debian package
+        run: bash build-deb.sh ${{ github.ref_name }}
+
+      - name: Cross-compile Windows x64
+        run: |
+          sudo apt-get update && sudo apt-get install -y gcc-mingw-w64-x86-64
+          make windows
+
+      - name: Create Release
+        uses: ncipollo/release-action@v1
         with:
-          artifacts: "deb/socksd_${{ steps.bump-semver.outputs.new_version }}.deb"
+          artifacts: "deb/socksd_${{ github.ref_name }}.deb,socksd.exe"
           token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ steps.bump-semver.outputs.new_version }}
+          tag: ${{ github.ref_name }}
+          generateReleaseNotes: true

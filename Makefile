@@ -14,6 +14,13 @@ LIBS = -lpthread
 
 CFLAGS += -Wall -std=c99
 
+# Windows cross-compilation
+CROSS_CC = x86_64-w64-mingw32-gcc
+WIN_PROG = socksd.exe
+WIN_OBJS = $(SRCS:.c=.win.o)
+WIN_LIBS = -lws2_32 -lpthread -static
+WIN_CFLAGS = -Wall -std=c99 -O2
+
 -include config.mak
 
 all: $(PROG)
@@ -25,6 +32,8 @@ install: $(PROG)
 clean:
 	rm -f $(PROG)
 	rm -f $(OBJS)
+	rm -f $(WIN_PROG)
+	rm -f $(WIN_OBJS)
 
 uninstall: $(PROG)
 	rm -rf $(bindir)/$(PROG)
@@ -35,5 +44,11 @@ uninstall: $(PROG)
 $(PROG): $(OBJS)
 	$(CC) $(LDFLAGS) $(OBJS) $(LIBS) -o $@
 
-.PHONY: all clean install
+%.win.o: %.c
+	$(CROSS_CC) $(WIN_CFLAGS) -c -o $@ $<
 
+windows: $(WIN_OBJS)
+	$(CROSS_CC) $(WIN_OBJS) $(WIN_LIBS) -o $(WIN_PROG)
+	strip $(WIN_PROG)
+
+.PHONY: all clean install windows

@@ -23,10 +23,25 @@ systemctl start socksd
 
 After starting socksd as a service, the proxy becomes available at 0.0.0.0:1337.
 
+## Cross-compile for Windows x64
+
+```bash
+sudo apt install gcc-mingw-w64-x86-64
+make windows
+```
+
+Produces a static `socksd.exe` (~82KB) with no DLL dependencies.
+
 ## Usage
 
 Bind the proxy to the specified address:
 
 ```bash
 socksd -i 10.10.10.100 -p 4200
+```
+
+With authentication:
+
+```bash
+socksd -i 0.0.0.0 -p 1080 -u user -P pass
 ```

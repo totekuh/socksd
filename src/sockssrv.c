@@ -22,16 +22,14 @@
 */
 
 #define _GNU_SOURCE
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 #define _POSIX_C_SOURCE 200809L
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <pthread.h>
-#include <signal.h>
-#include <sys/select.h>
-#include <arpa/inet.h>
-#include <errno.h>
 #include <limits.h>
 #include "server.h"
 #include "sblist.h"
@@ -138,8 +136,26 @@ static int connect_socks_target(unsigned char *buf, size_t n, struct client *cli
 	int fd = socket(remote->ai_addr->sa_family, SOCK_STREAM, 0);
 	if(fd == -1) {
 		eval_errno:
-		if(fd != -1) close(fd);
+		if(fd != -1) SOCK_CLOSE(fd);
 		freeaddrinfo(remote);
+#ifdef _WIN32
+		switch(WSAGetLastError()) {
+			case WSAETIMEDOUT:
+				return -EC_TTL_EXPIRED;
+			case WSAEPROTONOSUPPORT:
+			case WSAEAFNOSUPPORT:
+				return -EC_ADDRESSTYPE_NOT_SUPPORTED;
+			case WSAECONNREFUSED:
+				return -EC_CONN_REFUSED;
+			case WSAENETDOWN:
+			case WSAENETUNREACH:
+				return -EC_NET_UNREACHABLE;
+			case WSAEHOSTUNREACH:
+				return -EC_HOST_UNREACHABLE;
+			default:
+				return -EC_GENERAL_FAILURE;
+		}
+#else
 		switch(errno) {
 			case ETIMEDOUT:
 				return -EC_TTL_EXPIRED;
@@ -159,6 +175,7 @@ static int connect_socks_target(unsigned char *buf, size_t n, struct client *cli
 			perror("socket/connect");
 			return -EC_GENERAL_FAILURE;
 		}
+#endif
 	}
 	if(bind_mode && server_bindtoip(server, fd) == -1)
 		goto eval_errno;
@@ -226,14 +243,14 @@ static void send_auth_response(int fd, int version, enum authmethod meth) {
 	unsigned char buf[2];
 	buf[0] = version;
 	buf[1] = meth;
-	write(fd, buf, 2);
+	SOCK_WRITE(fd, buf, 2);
 }
 
 static void send_error(int fd, enum errorcode ec) {
 	/* position 4 contains ATYP, the address type, which is the same as used in the connect
 	   request. we're lazy and return always IPV4 address type in errors. */
 	char buf[10] = { 5, ec, 0, 1 /*AT_IPV4*/, 0,0,0,0, 0,0 };
-	write(fd, buf, 10);
+	SOCK_WRITE(fd, buf, 10);
 }
 
 static void copyloop(int fd1, int fd2) {
@@ -255,17 +272,19 @@ static void copyloop(int fd1, int fd2) {
 				send_error(fd1, EC_TTL_EXPIRED);
 				return;
 			case -1:
+#ifndef _WIN32
 				if(errno == EINTR) continue;
 				else perror("select");
+#endif
 				return;
 		}
 		int infd = FD_ISSET(fd1, &fds) ? fd1 : fd2;
 		int outfd = infd == fd2 ? fd1 : fd2;
 		char buf[1024];
-		ssize_t sent = 0, n = read(infd, buf, sizeof buf);
+		ssize_t sent = 0, n = SOCK_READ(infd, buf, sizeof buf);
 		if(n <= 0) return;
 		while(sent < n) {
-			ssize_t m = write(outfd, buf+sent, n-sent);
+			ssize_t m = SOCK_WRITE(outfd, buf+sent, n-sent);
 			if(m < 0) return;
 			sent += m;
 		}
@@ -297,7 +316,7 @@ static void* clientthread(void *data) {
 	int ret;
 	int remotefd = -1;
 	enum authmethod am;
-	while((n = recv(t->client.fd, buf, sizeof buf, 0)) > 0) {
+	while((n = recv(t->client.fd, (char*)buf, sizeof buf, 0)) > 0) {
 		switch(t->state) {
 			case SS_1_CONNECTED:
 				am = check_auth_method(buf, n, &t->client);
@@ -330,9 +349,9 @@ static void* clientthread(void *data) {
 breakloop:
 
 	if(remotefd != -1)
-		close(remotefd);
+		SOCK_CLOSE(remotefd);
 
-	close(t->client.fd);
+	SOCK_CLOSE(t->client.fd);
 	t->done = 1;
 
 	return 0;
@@ -379,6 +398,9 @@ int main(int argc, char** argv) {
 	int c;
 	const char *listenip = "0.0.0.0";
 	unsigned port = 1080;
+
+	platform_init();
+
 	while((c = getopt(argc, argv, ":1bi:p:u:P:")) != -1) {
 		switch(c) {
 			case '1':
@@ -415,7 +437,9 @@ int main(int argc, char** argv) {
 		dprintf(2, "error: auth-once option must be used together with user/pass\n");
 		return 1;
 	}
+#ifndef _WIN32
 	signal(SIGPIPE, SIG_IGN);
+#endif
 	struct server s;
 	sblist *threads = sblist_new(sizeof (struct thread*), 8);
 	if(server_setup(&s, listenip, port)) {
@@ -423,7 +447,11 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 	server = &s;
+#ifdef PTHREAD_STACK_MIN
 	size_t stacksz = MAX(8192, PTHREAD_STACK_MIN);  /* 4KB for us, 4KB for libc */
+#else
+	size_t stacksz = 64*1024;
+#endif
 
 	while(1) {
 		collect(threads);
@@ -434,7 +462,7 @@ int main(int argc, char** argv) {
 		if(server_waitclient(&s, &c)) continue;
 		curr->client = c;
 		if(!sblist_add(threads, &curr)) {
-			close(curr->client.fd);
+			SOCK_CLOSE(curr->client.fd);
 			free(curr);
 			oom:
 			dolog("rejecting connection due to OOM\n");

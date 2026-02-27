@@ -4,9 +4,7 @@
 #undef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200809L
 
-#include <sys/socket.h>
-#include <netdb.h>
-#include <netinet/in.h>
+#include "compat.h"
 
 //RcB: DEP "server.c"
 
@@ -32,4 +30,3 @@ int server_waitclient(struct server *server, struct client* client);
 int server_setup(struct server *server, const char* listenip, unsigned short port);
 
 #endif
-

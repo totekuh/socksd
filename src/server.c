@@ -1,7 +1,6 @@
 #include "server.h"
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 
 int resolve(const char *host, unsigned short port, struct addrinfo** addr) {
 	struct addrinfo hints = {
@@ -34,9 +33,9 @@ int server_setup(struct server *server, const char* listenip, unsigned short por
 		if((listenfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) < 0)
 			continue;
 		int yes = 1;
-		setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
+		setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, (const char*)&yes, sizeof(int));
 		if(bind(listenfd, p->ai_addr, p->ai_addrlen) < 0) {
-			close(listenfd);
+			SOCK_CLOSE(listenfd);
 			listenfd = -1;
 			continue;
 		}
@@ -45,7 +44,7 @@ int server_setup(struct server *server, const char* listenip, unsigned short por
 	if(listenfd < 0) return -2;
 	freeaddrinfo(ainfo);
 	if(listen(listenfd, SOMAXCONN) < 0) {
-		close(listenfd);
+		SOCK_CLOSE(listenfd);
 		return -3;
 	}
 	server->fd = listenfd;
@@ -53,8 +52,8 @@ int server_setup(struct server *server, const char* listenip, unsigned short por
 		server->bindaddrsz = ainfo->ai_addrlen;
 		memcpy(&server->bindaddr, ainfo->ai_addr, ainfo->ai_addrlen);
 		freeaddrinfo(ainfo);
-	} else server->bindaddr.v4.sin_family = AF_UNSPEC;	
-	
+	} else server->bindaddr.v4.sin_family = AF_UNSPEC;
+
 	dprintf(1, "Listening on %s:%d\n", listenip, port);
 	return 0;
 }

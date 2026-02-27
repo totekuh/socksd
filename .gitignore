@@ -1,4 +1,8 @@
 *.o
 *.out
+*.win.o
 socksd
-usr
+socksd.exe
+.idea/
+deb/socksd_*/
+deb/*.deb

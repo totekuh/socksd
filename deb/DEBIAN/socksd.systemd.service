@@ -1,9 +1,12 @@
 [Unit]
 Description=socksd service
 After=network.target
-                                                                                                                                                                                              
-[Service]                                                                                                                                                                                     TType=simple                                                                                                                                                                                    RemainAfterExit=yes                                                                                                                                                                            
-ExecStart=/usr/bin/socksd 0.0.0.0 1337
+
+[Service]
+User=nobody
+Type=simple
+RemainAfterExit=yes
+ExecStart=/usr/bin/socksd -i 0.0.0.0 -p 1337
 ExecStop=killall socksd
 
 [Install]

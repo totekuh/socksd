@@ -19,7 +19,7 @@ ExecStop=killall socksd
 [Install]
 WantedBy=multi-user.target
 ' > /usr/lib/systemd/system/socksd.service
-    systemd daemon-reload
+    systemctl daemon-reload
     exit 0
 }
 
